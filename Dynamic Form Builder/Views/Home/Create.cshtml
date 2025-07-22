@@ -1,0 +1,174 @@
+﻿@using Dynamic_Form_Builder.ViewModel
+@model FormVM
+
+@{
+    ViewData["Title"] = "Dynamic Form Builder";
+}
+<div class="container my-5">
+    <h2 class="mb-4">@ViewData["Title"]</h2>
+
+    <div id="alertPlaceholder"></div>
+
+    <form id="formBuilder">
+        @Html.AntiForgeryToken()
+
+        <div class="mb-3">
+            <label for="formTitle" class="form-label">Form Title <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="formTitle" name="Title" placeholder="Enter form title" required />
+        </div>
+
+        <hr />
+
+        <div id="fieldsContainer"></div>
+
+        <div class="mb-3">
+            <button type="button" id="btnAddField" class="btn btn-outline-primary">+ Add More Dropdown Field</button>
+        </div>
+
+        <hr />
+
+        <button type="submit" class="btn btn-success">Submit Form</button>
+    </form>
+</div>
+
+<!-- Hidden template for dropdown options -->
+<div id="dropdownOptionsTemplate" style="display: none;">
+    <select>
+        @foreach (var option in ViewBag.DropdownOptions as List<string>)
+        {
+            <option value="@option">@option</option>
+        }
+    </select>
+</div>
+
+@section Scripts {
+    <script>
+            let fieldIndex = 0;
+        const dropdownOptions =  document.querySelector('#dropdownOptionsTemplate select').innerHTML;
+
+        document.getElementById("btnAddField").addEventListener("click", function () {
+            const container = document.getElementById("fieldsContainer");
+
+            const fieldHtml = `
+                <div class="card mb-3 p-3 border-secondary">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-5">
+                            <label class="form-label">Field Label <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="Fields[${fieldIndex}].Label" placeholder="Enter field label" required />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-center">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="isRequired_${fieldIndex}" name="Fields[${fieldIndex}].IsRequired" />
+                                <label class="form-check-label" for="isRequired_${fieldIndex}">
+                                    Required
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Select Option <span class="text-danger">*</span></label>
+                            <select class="form-select" name="Fields[${fieldIndex}].SelectedOption" required>
+                                ${dropdownOptions}
+                            </select>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-center mt-4">
+                            <button type="button" class="btn btn-danger btn-sm remove-field-btn" title="Remove Field">remove</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', fieldHtml);
+            fieldIndex++;
+
+            $('.remove-field-btn').off('click').on('click', function () {
+                $(this).closest('.card').remove();
+            });
+        });
+
+        $('#formBuilder').submit(function (e) {
+            e.preventDefault();
+
+            const formTitle = $('#formTitle').val().trim();
+            if (!formTitle) {
+                showAlert('Form title is required.', 'danger');
+                return;
+            }
+
+            const fields = [];
+            let isValid = true;
+
+            $('#fieldsContainer .card').each(function () {
+                const label = $(this).find('input[name$=".Label"]').val()?.trim();
+                const isRequired = $(this).find('input[type="checkbox"]').is(':checked');
+                const selectedOption = $(this).find('select').val();
+
+                if (!label) {
+                    showAlert('All field labels are required.', 'danger');
+                    isValid = false;
+                    return false;
+                }
+                if (!selectedOption) {
+                    showAlert('All fields must have a selected option.', 'danger');
+                    isValid = false;
+                    return false;
+                }
+
+                fields.push({
+                    Label: label,
+                    IsRequired: isRequired,
+                    SelectedOption: selectedOption
+                });
+            });
+
+            if (!isValid || fields.length === 0) {
+                if (fields.length === 0) {
+                    showAlert('Please add at least one dropdown field.', 'danger');
+                }
+                return;
+            }
+
+            const payload = {
+                Title: formTitle,
+                Fields: fields
+            };
+
+            const token = $('input[name="__RequestVerificationToken"]').val();
+            debugger;
+            $.ajax({
+                url: '/SaveForm',
+                type: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'RequestVerificationToken': token
+                },
+                data: JSON.stringify(payload),
+                success: function (result) {
+                    if (result.success) {
+                        showAlert('Form saved successfully!', 'success');
+                        resetForm();
+                    } else {
+                        showAlert(result.message || 'Failed to save the form.', 'danger');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    showAlert('Server error: ' + error, 'danger');
+                }
+            });
+        });
+
+        function showAlert(message, type) {
+            $('#alertPlaceholder').html(`
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `);
+        }
+
+        function resetForm() {
+            $('#formTitle').val('');
+            $('#fieldsContainer').empty();
+            fieldIndex = 0;
+        }
+    </script>
+}

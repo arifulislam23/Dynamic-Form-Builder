@@ -1,0 +1,56 @@
+﻿@{
+    ViewData["Title"] = "Backup Script";
+
+    string scriptText = @"CREATE TABLE Forms (
+    FormId INT PRIMARY KEY IDENTITY(1,1),
+    Title NVARCHAR(255)
+);
+
+CREATE TABLE FormFields (
+    FieldId INT PRIMARY KEY IDENTITY(1,1),
+    FormId INT FOREIGN KEY REFERENCES Forms(FormId),
+    Label NVARCHAR(255),
+    IsRequired BIT,
+    SelectedOption NVARCHAR(100)
+);";
+}
+
+<div class="container my-5">
+    <h2>Data Table Create Script</h2>
+    <p>Please first fix the database connection.</p>
+
+    <pre id="scriptContent" class="border p-3 bg-light" style="white-space: pre-wrap; font-family: Consolas, monospace; font-size: 1rem; max-height: 400px; overflow-y: auto;">
+        @scriptText
+    </pre>
+
+    <div class="mt-3">
+        <button id="copyBtn" class="btn btn-primary me-2">Copy Script</button>
+        <a href="~/backup.zip" download class="btn btn-success">Download Backup</a>
+
+    </div>
+
+    <div id="alertPlaceholder" class="mt-3"></div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("copyBtn").addEventListener("click", function () {
+            const script = document.getElementById("scriptContent").innerText;
+
+            navigator.clipboard.writeText(script).then(() => {
+                showAlert("Script copied to clipboard!", "success");
+            }).catch(() => {
+                showAlert("Failed to copy script. Try manually.", "danger");
+            });
+        });
+
+        function showAlert(message, type) {
+            const alertPlaceholder = document.getElementById('alertPlaceholder');
+            alertPlaceholder.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`;
+        }
+    </script>
+}

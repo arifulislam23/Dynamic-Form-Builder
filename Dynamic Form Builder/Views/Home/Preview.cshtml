@@ -1,0 +1,87 @@
+﻿@model Dynamic_Form_Builder.ViewModel.FormVM
+@using Dynamic_Form_Builder.Models
+
+@{
+    ViewData["Title"] = "Edit Form";
+}
+<h2 class="mb-4">@Model.Title</h2>
+
+@if (Model.Fields != null && Model.Fields.Any())
+{
+    <form id="previewForm">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-3">
+            @for (int i = 0; i < Model.Fields.Count; i++)
+            {
+                <input type="hidden" name="Fields[@i].FieldId" value="@Model.Fields[i].FieldId" />
+
+                <div class="col-md-6">
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body">
+                            <label class="form-label fw-semibold">
+                                @Model.Fields[i].Label
+                                @if (Model.Fields[i].IsRequired)
+                                {
+                                    <span class="text-danger">*</span>
+                                }
+                            </label>
+
+                            <select name="Fields[@i].SelectedOption"
+                                    class="form-select"
+                                    required="@Model.Fields[i].IsRequired">
+                                <option value="">-- Select an option --</option>
+                                @foreach (var option in StaticOptions.DropdownOptions)
+                                {
+                                    <option value="@option" selected="@(Model.Fields[i].SelectedOption == option ? "selected" : null)">
+                                        @option
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Form</button>
+        <a asp-action="Index" class="btn btn-secondary ms-2">Back to List</a>
+    </form>
+
+    <div id="updateAlert" class="mt-3"></div>
+}
+else
+{
+    <div class="alert alert-warning">No fields found for this form.</div>
+}
+
+
+@section Scripts {
+    <script>
+        $('#previewForm').submit(function (e) {
+            e.preventDefault();
+
+            const token = $('input[name="__RequestVerificationToken"]').val();
+            const formData = $(this).serialize();
+
+            $.ajax({
+                url: '/Update',
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'RequestVerificationToken': token
+                },
+                success: function (result) {
+                    if (result.success) {
+                        $('#updateAlert').html(`<div class="alert alert-success">${result.message}</div>`);
+                    } else {
+                        $('#updateAlert').html(`<div class="alert alert-danger">${result.message}</div>`);
+                    }
+                },
+                error: function () {
+                    $('#updateAlert').html('<div class="alert alert-danger">Error updating form.</div>');
+                }
+            });
+        });
+    </script>
+}
